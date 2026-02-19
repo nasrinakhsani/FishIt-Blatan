@@ -1,0 +1,20 @@
+# ISI .gitignore
+echo "# Dependencies
+node_modules/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/*.lua
+!dist/FishItBlatan.lua
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Environment
+.env
+.env.local
+" > .gitignore
