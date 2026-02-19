@@ -6,7 +6,7 @@ Script auto fishing dengan fitur **MULTIPLE CATCH** (1x cast = 5+ ikan)
 2. Jalankan executor
 3. Paste script ini:
 \`\`\`lua
-loadstring(game:HttpGet(\"https://raw.githubusercontent.com/partolentho868/FishIt-Blatan/main/dist/FishItBlatan.lua\"))()
+loadstring(game:HttpGet(\"https://raw.githubusercontent.com/nasrinakhsani/FishIt-Blatan/main/dist/FishItBlatan.lua\"))()
 \`\`\`
 
 ## ⚡ Fitur Utama

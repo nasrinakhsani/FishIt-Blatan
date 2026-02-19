@@ -1,13 +1,13 @@
-echo "local Fishing = {}
+local Fishing = {}
 
 function Fishing:Cast()
     local player = game.Players.LocalPlayer
-    local rod = player.Backpack:FindFirstChildOfClass(\"Tool\") 
-            or player.Character:FindFirstChildOfClass(\"Tool\")
+    local rod = player.Backpack:FindFirstChildOfClass("Tool") 
+            or player.Character:FindFirstChildOfClass("Tool")
     
     if rod then
         for _, v in pairs(rod:GetChildren()) do
-            if v:IsA(\"RemoteEvent\") and v.Name:lower():find(\"cast\") then
+            if v:IsA("RemoteEvent") and v.Name:lower():find("cast") then
                 v:FireServer()
                 return true
             end
@@ -18,12 +18,12 @@ end
 
 function Fishing:Reel()
     local player = game.Players.LocalPlayer
-    local rod = player.Backpack:FindFirstChildOfClass(\"Tool\") 
-            or player.Character:FindFirstChildOfClass(\"Tool\")
+    local rod = player.Backpack:FindFirstChildOfClass("Tool") 
+            or player.Character:FindFirstChildOfClass("Tool")
     
     if rod then
         for _, v in pairs(rod:GetChildren()) do
-            if v:IsA(\"RemoteEvent\") and v.Name:lower():find(\"reel\") then
+            if v:IsA("RemoteEvent") and v.Name:lower():find("reel") then
                 v:FireServer()
                 return true
             end
@@ -33,5 +33,3 @@ function Fishing:Reel()
 end
 
 return Fishing
-" > src/modules/fishing.lua
-
