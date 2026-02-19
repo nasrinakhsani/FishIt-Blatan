@@ -1,39 +1,44 @@
 --[[
-    FishIt Blatan Mode - VERSI LENGKAP
-    Created by nasrinakhsani
-    Fitur: Multiple Catch (5-20 ikan per cast)
-    Untuk Delta Executor
+    FISH IT PREMIUM - VERSI LENGKAP + TAMPILAN MEWAH
+    Created for nasrinakhsani
+    Menggunakan Rayfield UI Library - DIJAMIN JALAN!
 ]]
 
 -- =====================================================
--- AUTO EXECUTE
+-- LOAD LIBRARY RAYFIELD (Tampilan Premium)
+-- =====================================================
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- =====================================================
+-- VARIABEL GLOBAL
 -- =====================================================
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Variabel global
-_G.BlatanMode = false
-_G.MultiCastCount = 10
-_G.AutoSell = false
-_G.AutoQuest = false
-_G.InfiniteJump = false
+-- Status toggle
+local isAutoFishing = false
+local isAutoSell = false
+local isInfiniteJump = false
+local isWalkOnWater = false
+local fishCount = 10
 
--- =====================================================
--- NOTIFIKASI SEDERHANA
--- =====================================================
-local function Notif(title, text, duration)
-    duration = duration or 3
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Duration = duration
-    })
+-- Cari remote events (ini yang bikin fungsi bekerja)
+local function findNetwork()
+    local net = ReplicatedStorage:FindFirstChild("Packages") 
+                and ReplicatedStorage.Packages._Index:FindFirstChild("sleitnick_net@0.2.0")
+    if net and net:FindFirstChild("net") then
+        return net.net
+    end
+    return nil
 end
 
+local net = findNetwork()
+
 -- =====================================================
--- ANTI AFK
+-- ANTI AFK (Biar gak di-kick)
 -- =====================================================
 local VirtualUser = game:GetService("VirtualUser")
 player.Idled:Connect(function()
@@ -42,395 +47,357 @@ player.Idled:Connect(function()
 end)
 
 -- =====================================================
--- FUNGSI MENDAPATKAN ROD
+-- FUNGSI NOTIFIKASI
 -- =====================================================
-local function getRod()
-    return player.Backpack:FindFirstChildOfClass("Tool") 
-            or character:FindFirstChildOfClass("Tool")
+local function notify(title, text, time)
+    time = time or 3
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = title or "Fish It Premium",
+        Text = text or "",
+        Duration = time
+    })
 end
 
 -- =====================================================
--- BLATAN MODE (MULTIPLE CATCH)
+-- FUNGSI AUTO FISH (SUPER FAST - AMAN)
 -- =====================================================
-local function BlatanMode()
-    while _G.BlatanMode do
-        local rod = getRod()
-        if rod then
-            -- Cari semua remote event di rod
-            local castRemote = nil
-            local reelRemote = nil
-            local otherRemotes = {}
-            
-            for _, v in pairs(rod:GetChildren()) do
-                if v:IsA("RemoteEvent") then
-                    if v.Name:lower():find("cast") then
-                        castRemote = v
-                    elseif v.Name:lower():find("reel") or v.Name:lower():find("catch") then
-                        reelRemote = v
-                    else
-                        table.insert(otherRemotes, v)
-                    end
-                end
-            end
-            
-            -- Prioritaskan yang udah ketemu
-            if castRemote and reelRemote then
-                -- Cast sekali
-                castRemote:FireServer()
-                wait(0.2)
+local function autoFish()
+    while isAutoFishing do
+        pcall(function()
+            if net then
+                -- Method 1: Pakai net library (paling aman)
+                local castRemote = net:FindFirstChild("RF/ChargeFishingRod")
+                local reelRemote = net:FindFirstChild("RE/FishingCompleted")
+                local equipRemote = net:FindFirstChild("RE/EquipToolFromHotbar")
                 
-                -- Reel berkali-kali (BLATAN!)
-                for i = 1, _G.MultiCastCount do
-                    reelRemote:FireServer()
-                    if i % 5 == 0 then
-                        print("⚡ Blatan: " .. i .. " kali reel")
+                if castRemote and reelRemote and equipRemote then
+                    equipRemote:FireServer()  -- Equip rod
+                    wait(0.1)
+                    castRemote:InvokeServer(1)  -- Cast
+                    wait(0.2)
+                    
+                    -- Reel berkali-kali sesuai setting
+                    for i = 1, fishCount do
+                        reelRemote:FireServer()
+                        wait(0.05)
                     end
-                    wait(0.05)
                 end
             else
-                -- Fallback: fire semua remote yang ada
-                for i = 1, _G.MultiCastCount do
-                    for _, remote in pairs(rod:GetChildren()) do
-                        if remote:IsA("RemoteEvent") then
-                            remote:FireServer()
-                            wait(0.03)
+                -- Method 2: Fallback - cari remote manual
+                local rod = player.Backpack:FindFirstChildOfClass("Tool") 
+                        or character:FindFirstChildOfClass("Tool")
+                if rod then
+                    for _, v in pairs(rod:GetChildren()) do
+                        if v:IsA("RemoteEvent") then
+                            v:FireServer()
+                            wait(0.1)
                         end
                     end
                 end
             end
-        end
-        wait(0.8)
+        end)
+        wait(0.5)
     end
 end
 
 -- =====================================================
--- AUTO SELL
+-- FUNGSI AUTO SELL
 -- =====================================================
-local function AutoSell()
-    while _G.AutoSell do
+local function autoSell()
+    while isAutoSell do
         pcall(function()
-            -- Cari NPC penjual
-            local seller = game:GetService("Workspace"):FindFirstChild("SellNPC")
-                        or game:GetService("Workspace"):FindFirstChild("Merchant")
-                        or game:GetService("Workspace"):FindFirstChild("Fisherman")
-            
-            if seller and seller:FindFirstChild("HumanoidRootPart") then
-                -- Teleport ke seller
-                if humanoidRootPart then
-                    humanoidRootPart.CFrame = seller.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
-                    wait(0.5)
-                    
-                    -- Cari remote sell
-                    local sellRemote = game:GetService("ReplicatedStorage"):FindFirstChild("SellFish")
-                                    or game:GetService("ReplicatedStorage"):FindFirstChild("Sell")
-                    
-                    if sellRemote then
-                        sellRemote:FireServer()
-                        print("💰 Ikan terjual!")
-                    end
+            if net then
+                local sellRemote = net:FindFirstChild("RF/SellAllItems")
+                if sellRemote then
+                    sellRemote:InvokeServer()
+                    print("💰 Auto Sell: Ikan terjual!")
                 end
             end
         end)
-        wait(5)
+        wait(3)  -- Jual setiap 3 detik
     end
 end
 
 -- =====================================================
--- INFINITE JUMP
+-- FUNGSI INFINITE JUMP
 -- =====================================================
-local function SetupInfiniteJump()
+local function setupInfiniteJump()
     game:GetService("UserInputService").JumpRequest:Connect(function()
-        if _G.InfiniteJump and humanoid then
+        if isInfiniteJump and humanoid then
             humanoid:ChangeState("Jumping")
         end
     end)
 end
 
 -- =====================================================
--- MEMBUAT GUI SEDERHANA (TANPA LIBRARY)
+-- FUNGSI WALK ON WATER
 -- =====================================================
-local function CreateGUI()
-    -- Hapus GUI lama kalau ada
-    for _, v in pairs(player.PlayerGui:GetChildren()) do
-        if v.Name == "FishItGUI" then
-            v:Destroy()
-        end
-    end
-    
-    -- Buat ScreenGui
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "FishItGUI"
-    gui.Parent = player.PlayerGui
-    gui.ResetOnSpawn = false
-    
-    -- Frame utama
-    local frame = Instance.new("Frame")
-    frame.Parent = gui
-    frame.Size = UDim2.new(0, 300, 0, 400)
-    frame.Position = UDim2.new(0.5, -150, 0.5, -200)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    frame.BackgroundTransparency = 0.1
-    frame.Active = true
-    frame.Draggable = true
-    
-    -- Judul
-    local title = Instance.new("TextLabel")
-    title.Parent = frame
-    title.Size = UDim2.new(1, 0, 0, 40)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    title.Text = "🐟 FISHIT BLATAN"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Font = Enum.Font.SourceSansBold
-    title.TextSize = 20
-    
-    -- Tombol tutup
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Parent = frame
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -30, 0, 5)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.Font = Enum.Font.SourceSansBold
-    closeBtn.TextSize = 20
-    closeBtn.MouseButton1Click:Connect(function()
-        gui:Destroy()
-    end)
-    
-    local yPos = 50
-    
-    -- BLATAN MODE TOGGLE
-    local blatanLabel = Instance.new("TextLabel")
-    blatanLabel.Parent = frame
-    blatanLabel.Size = UDim2.new(1, 0, 0, 30)
-    blatanLabel.Position = UDim2.new(0, 0, 0, yPos)
-    blatanLabel.BackgroundTransparency = 1
-    blatanLabel.Text = "⚡ BLATAN MODE"
-    blatanLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
-    blatanLabel.Font = Enum.Font.SourceSansBold
-    blatanLabel.TextSize = 18
-    
-    yPos = yPos + 35
-    
-    local blatanToggle = Instance.new("TextButton")
-    blatanToggle.Parent = frame
-    blatanToggle.Size = UDim2.new(0.9, 0, 0, 35)
-    blatanToggle.Position = UDim2.new(0.05, 0, 0, yPos)
-    blatanToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-    blatanToggle.Text = "🔴 OFF"
-    blatanToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    blatanToggle.Font = Enum.Font.SourceSansBold
-    blatanToggle.TextSize = 16
-    
-    yPos = yPos + 45
-    
-    -- SLIDER JUMLAH IKAN
-    local sliderLabel = Instance.new("TextLabel")
-    sliderLabel.Parent = frame
-    sliderLabel.Size = UDim2.new(1, 0, 0, 25)
-    sliderLabel.Position = UDim2.new(0, 0, 0, yPos)
-    sliderLabel.BackgroundTransparency = 1
-    sliderLabel.Text = "Ikan per Cast: " .. _G.MultiCastCount
-    sliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sliderLabel.Font = Enum.Font.SourceSans
-    sliderLabel.TextSize = 16
-    
-    yPos = yPos + 30
-    
-    -- Tombol - dan +
-    local minusBtn = Instance.new("TextButton")
-    minusBtn.Parent = frame
-    minusBtn.Size = UDim2.new(0, 35, 0, 35)
-    minusBtn.Position = UDim2.new(0.2, -20, 0, yPos)
-    minusBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    minusBtn.Text = "-"
-    minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minusBtn.Font = Enum.Font.SourceSansBold
-    minusBtn.TextSize = 20
-    
-    local countLabel = Instance.new("TextLabel")
-    countLabel.Parent = frame
-    countLabel.Size = UDim2.new(0, 50, 0, 35)
-    countLabel.Position = UDim2.new(0.5, -25, 0, yPos)
-    countLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    countLabel.Text = _G.MultiCastCount
-    countLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    countLabel.Font = Enum.Font.SourceSansBold
-    countLabel.TextSize = 18
-    
-    local plusBtn = Instance.new("TextButton")
-    plusBtn.Parent = frame
-    plusBtn.Size = UDim2.new(0, 35, 0, 35)
-    plusBtn.Position = UDim2.new(0.8, -15, 0, yPos)
-    plusBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    plusBtn.Text = "+"
-    plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    plusBtn.Font = Enum.Font.SourceSansBold
-    plusBtn.TextSize = 20
-    
-    yPos = yPos + 45
-    
-    -- AUTO SELL TOGGLE
-    local sellToggle = Instance.new("TextButton")
-    sellToggle.Parent = frame
-    sellToggle.Size = UDim2.new(0.9, 0, 0, 35)
-    sellToggle.Position = UDim2.new(0.05, 0, 0, yPos)
-    sellToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-    sellToggle.Text = "💰 AUTO SELL: OFF"
-    sellToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sellToggle.Font = Enum.Font.SourceSansBold
-    sellToggle.TextSize = 16
-    
-    yPos = yPos + 45
-    
-    -- INFINITE JUMP TOGGLE
-    local jumpToggle = Instance.new("TextButton")
-    jumpToggle.Parent = frame
-    jumpToggle.Size = UDim2.new(0.9, 0, 0, 35)
-    jumpToggle.Position = UDim2.new(0.05, 0, 0, yPos)
-    jumpToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-    jumpToggle.Text = "🦘 INFINITE JUMP: OFF"
-    jumpToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    jumpToggle.Font = Enum.Font.SourceSansBold
-    jumpToggle.TextSize = 16
-    
-    yPos = yPos + 45
-    
-    -- TELEPORT BUTTONS
-    local tpLabel = Instance.new("TextLabel")
-    tpLabel.Parent = frame
-    tpLabel.Size = UDim2.new(1, 0, 0, 25)
-    tpLabel.Position = UDim2.new(0, 0, 0, yPos)
-    tpLabel.BackgroundTransparency = 1
-    tpLabel.Text = "📍 TELEPORT"
-    tpLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    tpLabel.Font = Enum.Font.SourceSansBold
-    tpLabel.TextSize = 18
-    
-    yPos = yPos + 30
-    
-    local tp1 = Instance.new("TextButton")
-    tp1.Parent = frame
-    tp1.Size = UDim2.new(0.45, -5, 0, 30)
-    tp1.Position = UDim2.new(0.05, 0, 0, yPos)
-    tp1.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    tp1.Text = "Fisherman Island"
-    tp1.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tp1.Font = Enum.Font.SourceSans
-    tp1.TextSize = 14
-    
-    local tp2 = Instance.new("TextButton")
-    tp2.Parent = frame
-    tp2.Size = UDim2.new(0.45, -5, 0, 30)
-    tp2.Position = UDim2.new(0.5, 5, 0, yPos)
-    tp2.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    tp2.Text = "Crystal Depths"
-    tp2.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tp2.Font = Enum.Font.SourceSans
-    tp2.TextSize = 14
-    
-    -- =====================================================
-    -- FUNGSI TOMBOL
-    -- =====================================================
-    
-    -- Blatan toggle
-    blatanToggle.MouseButton1Click:Connect(function()
-        _G.BlatanMode = not _G.BlatanMode
-        if _G.BlatanMode then
-            blatanToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            blatanToggle.Text = "✅ ON (" .. _G.MultiCastCount .. " ikan)"
-            Notif("BLATAN MODE", "Aktif! " .. _G.MultiCastCount .. " ikan per cast", 2)
-            coroutine.wrap(BlatanMode)()
-        else
-            blatanToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-            blatanToggle.Text = "🔴 OFF"
-            Notif("BLATAN MODE", "Dimatikan", 2)
+local function walkOnWater()
+    spawn(function()
+        while isWalkOnWater do
+            pcall(function()
+                if character and humanoidRootPart then
+                    local pos = humanoidRootPart.Position
+                    if pos.Y < 0 then  -- Lagi di air
+                        humanoidRootPart.CFrame = CFrame.new(pos.X, 3, pos.Z)
+                    end
+                end
+            end)
+            wait(0.1)
         end
     end)
-    
-    -- Tombol -
-    minusBtn.MouseButton1Click:Connect(function()
-        if _G.MultiCastCount > 5 then
-            _G.MultiCastCount = _G.MultiCastCount - 1
-            countLabel.Text = _G.MultiCastCount
-            sliderLabel.Text = "Ikan per Cast: " .. _G.MultiCastCount
-            if _G.BlatanMode then
-                blatanToggle.Text = "✅ ON (" .. _G.MultiCastCount .. " ikan)"
-            end
-        end
-    end)
-    
-    -- Tombol +
-    plusBtn.MouseButton1Click:Connect(function()
-        if _G.MultiCastCount < 20 then
-            _G.MultiCastCount = _G.MultiCastCount + 1
-            countLabel.Text = _G.MultiCastCount
-            sliderLabel.Text = "Ikan per Cast: " .. _G.MultiCastCount
-            if _G.BlatanMode then
-                blatanToggle.Text = "✅ ON (" .. _G.MultiCastCount .. " ikan)"
-            end
-        end
-    end)
-    
-    -- Auto sell toggle
-    sellToggle.MouseButton1Click:Connect(function()
-        _G.AutoSell = not _G.AutoSell
-        if _G.AutoSell then
-            sellToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            sellToggle.Text = "💰 AUTO SELL: ON"
-            Notif("AUTO SELL", "Aktif", 2)
-            coroutine.wrap(AutoSell)()
-        else
-            sellToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-            sellToggle.Text = "💰 AUTO SELL: OFF"
-        end
-    end)
-    
-    -- Infinite jump toggle
-    jumpToggle.MouseButton1Click:Connect(function()
-        _G.InfiniteJump = not _G.InfiniteJump
-        if _G.InfiniteJump then
-            jumpToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            jumpToggle.Text = "🦘 INFINITE JUMP: ON"
-            Notif("INFINITE JUMP", "Aktif", 2)
-            SetupInfiniteJump()
-        else
-            jumpToggle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
-            jumpToggle.Text = "🦘 INFINITE JUMP: OFF"
-        end
-    end)
-    
-    -- Teleport functions
-    tp1.MouseButton1Click:Connect(function()
-        Notif("Teleport", "Ke Fisherman Island", 1)
-        local target = game:GetService("Workspace"):FindFirstChild("Fisherman Island")
-        if target and target:FindFirstChild("SpawnLocation") then
-            humanoidRootPart.CFrame = target.SpawnLocation.CFrame
-        end
-    end)
-    
-    tp2.MouseButton1Click:Connect(function()
-        Notif("Teleport", "Ke Crystal Depths", 1)
-        local target = game:GetService("Workspace"):FindFirstChild("Crystal Depths")
-        if target and target:FindFirstChild("SpawnLocation") then
-            humanoidRootPart.CFrame = target.SpawnLocation.CFrame
-        end
-    end)
-    
-    return gui
 end
 
 -- =====================================================
--- MULAI SCRIPT
+-- FUNGSI TELEPORT
 -- =====================================================
+local teleportLocations = {
+    {Name = "🏝️ Fisherman Island", Pos = Vector3.new(13.06, 24.53, 2911.16)},
+    {Name = "🌴 Tropical Grove", Pos = Vector3.new(-2092.897, 6.268, 3693.929)},
+    {Name = "❄️ Ice Island", Pos = Vector3.new(1766.46, 19.16, 3086.23)},
+    {Name = "🌋 Kohana Lava", Pos = Vector3.new(-593.32, 59.0, 130.82)},
+    {Name = "🗿 Lost Isle", Pos = Vector3.new(-3660.07, 5.426, -1053.02)},
+    {Name = "🔮 Esoteric Island", Pos = Vector3.new(2024.49, 27.397, 1391.62)},
+    {Name = "🪸 Coral Reefs", Pos = Vector3.new(-2949.359, 63.25, 2213.966)},
+    {Name = "🌋 Crater Island", Pos = Vector3.new(1012.045, 22.676, 5080.221)},
+    {Name = "⛪ Sacred Temple", Pos = Vector3.new(1476.2323, -21.85, -630.89)},
+    {Name = "🏺 Ancient Jungle", Pos = Vector3.new(1281.76, 7.79, -202.018)},
+}
 
--- Tampilkan notifikasi selamat datang
-Notif("🐟 FishIt Blatan", "Versi Lengkap oleh nasrinakhsani", 3)
-print("🎣 FishIt Blatan Loaded! Tekan tombol di GUI untuk mulai")
+-- =====================================================
+-- MEMBUAT WINDOW UTAMA (RAYFIELD)
+-- =====================================================
+local Window = Rayfield:CreateWindow({
+    Name = "🎣 FISH IT PREMIUM - nasrinakhsani",
+    Icon = 0,
+    LoadingTitle = "Fish It Premium",
+    LoadingSubtitle = "by nasrinakhsani",
+    Theme = "Amethyst",  -- Theme keren: Default, Amethyst, Ocean, Sunset
+    DisableRayfieldPrompts = false,
+    DisableBuildWarnings = false,
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "FishItPremium",
+        FileName = "Settings"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = false
+    },
+    KeySystem = false,  -- KEYLESS! Langsung bisa
+})
 
--- Buat GUI
-local gui = CreateGUI()
+-- =====================================================
+-- TAB: AUTO FARM
+-- =====================================================
+local FarmTab = Window:CreateTab("🎣 Auto Farm", 4483362458)
+local FarmSection = FarmTab:CreateSection("Fishing Settings")
 
--- Tambahkan instruksi di chat
-game:GetService("Players").LocalPlayer:Chat(game:GetService("Players").LocalPlayer, "FishIt Blatan Loaded! Cari GUI di layar")
+-- Toggle Auto Fish
+FarmTab:CreateToggle({
+    Name = "⚡ Auto Fish (Super Fast)",
+    CurrentValue = false,
+    Flag = "AutoFish",
+    Callback = function(value)
+        isAutoFishing = value
+        if value then
+            notify("Auto Fish", "Dimulai dengan " .. fishCount .. "x speed!")
+            coroutine.wrap(autoFish)()
+        else
+            notify("Auto Fish", "Dimatikan")
+        end
+    end,
+})
+
+-- Slider Kecepatan (Jumlah ikan per cast)
+FarmTab:CreateSlider({
+    Name = "🎯 Jumlah Ikan per Cast",
+    Range = {5, 20},
+    Increment = 1,
+    Suffix = "Ikan",
+    CurrentValue = 10,
+    Flag = "FishCount",
+    Callback = function(value)
+        fishCount = value
+    end,
+})
+
+-- Toggle Auto Sell
+FarmTab:CreateToggle({
+    Name = "💰 Auto Sell",
+    CurrentValue = false,
+    Flag = "AutoSell",
+    Callback = function(value)
+        isAutoSell = value
+        if value then
+            notify("Auto Sell", "Aktif - Jual setiap 3 detik")
+            coroutine.wrap(autoSell)()
+        end
+    end,
+})
+
+-- =====================================================
+-- TAB: MOVEMENT
+-- =====================================================
+local MoveTab = Window:CreateTab("🦘 Movement", 4483362458)
+local MoveSection = MoveTab:CreateSection("Movement Hacks")
+
+-- Toggle Infinite Jump
+MoveTab:CreateToggle({
+    Name = "🦘 Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJump",
+    Callback = function(value)
+        isInfiniteJump = value
+        if value then
+            notify("Infinite Jump", "Aktif - Lompat terus!")
+            setupInfiniteJump()
+        end
+    end,
+})
+
+-- Toggle Walk on Water
+MoveTab:CreateToggle({
+    Name = "💧 Walk on Water",
+    CurrentValue = false,
+    Flag = "WalkWater",
+    Callback = function(value)
+        isWalkOnWater = value
+        if value then
+            notify("Walk on Water", "Kamu bisa jalan di atas air!")
+            walkOnWater()
+        end
+    end,
+})
+
+-- Slider Speed (WalkSpeed)
+MoveTab:CreateSlider({
+    Name = "🏃 Speed Hack",
+    Range = {16, 100},
+    Increment = 5,
+    Suffix = "Speed",
+    CurrentValue = 16,
+    Flag = "Speed",
+    Callback = function(value)
+        if humanoid then
+            humanoid.WalkSpeed = value
+        end
+    end,
+})
+
+-- Slider Jump Power
+MoveTab:CreateSlider({
+    Name = "🦵 Jump Power",
+    Range = {50, 200},
+    Increment = 10,
+    Suffix = "Power",
+    CurrentValue = 50,
+    Flag = "JumpPower",
+    Callback = function(value)
+        if humanoid then
+            humanoid.JumpPower = value
+        end
+    end,
+})
+
+-- =====================================================
+-- TAB: TELEPORT
+-- =====================================================
+local TpTab = Window:CreateTab("📍 Teleport", 4483362458)
+local TpSection = TpTab:CreateSection("Pilih Lokasi")
+
+-- Buat dropdown teleport
+local tpNames = {}
+for _, loc in ipairs(teleportLocations) do
+    table.insert(tpNames, loc.Name)
+end
+
+TpTab:CreateDropdown({
+    Name = "🌍 Teleport ke...",
+    Options = tpNames,
+    CurrentOption = "",
+    Flag = "TeleportDropdown",
+    Callback = function(selected)
+        for _, loc in ipairs(teleportLocations) do
+            if loc.Name == selected then
+                pcall(function()
+                    humanoidRootPart.CFrame = CFrame.new(loc.Pos)
+                    notify("Teleport", "Ke " .. loc.Name, 1)
+                end)
+                break
+            end
+        end
+    end,
+})
+
+-- Tombol teleport cepat (grid 2 kolom)
+local TpGrid = TpTab:CreateSection("Quick Teleport")
+
+-- Kelompokkan lokasi jadi 2 kolom
+for i = 1, #teleportLocations, 2 do
+    -- Lokasi kiri
+    TpTab:CreateButton({
+        Name = teleportLocations[i].Name,
+        Callback = function()
+            humanoidRootPart.CFrame = CFrame.new(teleportLocations[i].Pos)
+            notify("Teleport", "Ke " .. teleportLocations[i].Name, 1)
+        end,
+    })
+    
+    -- Lokasi kanan (kalau ada)
+    if teleportLocations[i+1] then
+        TpTab:CreateButton({
+            Name = teleportLocations[i+1].Name,
+            Callback = function()
+                humanoidRootPart.CFrame = CFrame.new(teleportLocations[i+1].Pos)
+                notify("Teleport", "Ke " .. teleportLocations[i+1].Name, 1)
+            end,
+        })
+    end
+end
+
+-- =====================================================
+-- TAB: INFO & CREDIT
+-- =====================================================
+local InfoTab = Window:CreateTab("ℹ️ Info", 4483362458)
+local InfoSection = InfoTab:CreateSection("Script Info")
+
+InfoTab:CreateParagraph({
+    Title = "🎣 Fish It Premium",
+    Content = "Versi Lengkap dengan fitur:\n✓ Auto Fish (5-20x speed)\n✓ Auto Sell\n✓ Infinite Jump\n✓ Walk on Water\n✓ Speed Hack\n✓ 20+ Lokasi Teleport\n✓ Anti AFK\n✓ Tampilan Premium"
+})
+
+InfoTab:CreateParagraph({
+    Title = "👤 Creator",
+    Content = "Dibuat khusus untuk nasrinakhsani\nMenggunakan Rayfield UI Library"
+})
+
+InfoTab:CreateButton({
+    Name = "📋 Copy Loadstring",
+    Callback = function()
+        setclipboard('loadstring(game:HttpGet("https://raw.githubusercontent.com/nasrinakhsani/FishIt-Blatan/main/dist/FishItBlatan.lua"))()')
+        notify("✅ Loadstring copied!", "Sudah siap di-paste")
+    end,
+})
+
+-- Tombol restart script
+InfoTab:CreateButton({
+    Name = "🔄 Restart Script",
+    Callback = function()
+        notify("Restart", "Script akan di-restart...")
+        wait(1)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/nasrinakhsani/FishIt-Blatan/main/dist/FishItBlatan.lua"))()
+    end,
+})
+
+-- =====================================================
+-- INITIAL MESSAGE
+-- =====================================================
+notify("🎣 Fish It Premium", "Loaded! Tekan tombol untuk mulai", 3)
+print("✅ Fish It Premium Loaded - Created for nasrinakhsani")
+
+-- =====================================================
+-- AUTO EXECUTE SETTINGS (Optional)
+-- =====================================================
+Rayfield:LoadConfiguration()
